@@ -138,21 +138,38 @@ st.markdown(
 )
 left, right = st.columns(2)
 with left:
-    if st.button("🎲 Get a random AI-generated face (thispersondoesnotexist.com)"):
-        req = urllib.request.Request("https://thispersondoesnotexist.com/", headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=20) as r:
-            st.session_state["img"] = r.read()
+    W = "https://upload.wikimedia.org/wikipedia/commons/"
+    EXAMPLES = {  # public-domain images from Wikimedia Commons
+        "AI-generated face #1 (StyleGAN)": W + "1/1c/This_Person_Does_Not_Exist_example.jpg",
+        "AI-generated face #2 (StyleGAN)": W + "1/1f/Woman_1.jpg",
+        "Real photo: Albert Einstein (1947)": W + "d/d3/Albert_Einstein_Head.jpg",
+        "Real photo: Marie Curie (c. 1920)": W + "7/7e/Marie_Curie_c1920.jpg",
+    }
+    ex = st.selectbox("Try an example image…", ["(none)"] + list(EXAMPLES))
+    if ex != "(none)" and st.session_state.get("ex") != ex:
+        try:
+            req = urllib.request.Request(EXAMPLES[ex], headers={"User-Agent": "portfolio-demo/1.0 (fahan860)"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                st.session_state["img"] = r.read()
+            st.session_state["ex"] = ex
+        except Exception:
+            st.warning("Could not download this example, please upload an image instead.")
     up = st.file_uploader("…or upload a face photo", type=["jpg", "jpeg", "png", "webp"])
     if up is not None:
         st.session_state["img"] = up.getvalue()
-    image = Image.open(io.BytesIO(st.session_state["img"])) if "img" in st.session_state else None
+    image = None
+    if "img" in st.session_state:
+        try:
+            image = Image.open(io.BytesIO(st.session_state["img"])).convert("RGB")
+        except Exception:
+            st.warning("This file is not a readable image.")
     if image is not None:
         st.image(image, width=320)
 with right:
     if not MODELS:
         st.error("No model could be loaded. " + " · ".join(STATUS))
     elif image is None:
-        st.info("Upload a face photo, or click the button to get an AI-generated face.")
+        st.info("Pick an example or upload a face photo.")
     else:
         name = st.selectbox("Model", list(MODELS))
         probs = predict(name, image)
@@ -164,6 +181,6 @@ with right:
             p = predict(n, image)
             rows.append({"Model": n, "P(fake)": f"{p[1]:.0%}", "Verdict": "FAKE" if p[1] > 0.5 else "REAL"})
         st.dataframe(rows, hide_index=True, width="stretch")
-    st.caption("Models loaded: " + " · ".join(STATUS))
+    st.caption("Models available in this demo: " + ", ".join(MODELS) + ". (The custom 5-block CNN and VGG16 are part of the project but not served here.)")
     st.caption("Limits: trained on one dataset; a detector can generalise poorly to images from other generators, to heavy "
                "compression or to non-face images. Best results on a cropped, front-facing face.")
