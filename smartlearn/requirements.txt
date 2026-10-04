@@ -2,3 +2,4 @@ torch @ https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp314-cp314-m
 sentence-transformers
 numpy
 pandas
+streamlit
